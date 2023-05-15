@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Structure to encapsulate saturation factor for the Metal kernel function.
 struct SaturationInput {
-    var saturationFactor: Float
+    var saturationFactor: Float ///< Saturation factor to be applied to the image.
 }

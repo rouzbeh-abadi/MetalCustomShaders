@@ -31,11 +31,11 @@ class MetalImageProcessing {
             fatalError("Failed to initialize MetalImageProcessing: \(error)")
         }
     }()
-
+    
     // The Metal device
     var device: MTLDevice
     private let commandQueue: MTLCommandQueue
-
+    
     // Private initializer
     private init() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
@@ -51,7 +51,7 @@ class MetalImageProcessing {
 // MARK: - Image Processing
 
 extension MetalImageProcessing {
-
+    
     /// Applies the specified filter to an image using Metal.
     ///
     /// This function first retrieves the Metal function for the filter, then prepares the input and output textures.
@@ -67,7 +67,7 @@ extension MetalImageProcessing {
     func apply(filter: Filter, to image: UIImage) throws -> UIImage {
         let functionName: String
         var input: SaturationInput?
-
+        
         switch filter {
         case .grayscale:
             functionName = "grayscale"
@@ -79,9 +79,9 @@ extension MetalImageProcessing {
         case .none:
             return image
         }
-
-    
-
+        
+        
+        
         guard let library = device.makeDefaultLibrary(),
               let function = library.makeFunction(name: functionName),
               let pipelineState = try? device.makeComputePipelineState(function: function) else {
@@ -110,10 +110,10 @@ extension MetalImageProcessing {
         }
         
         if let input = input {
-              var metalInput = SaturationInput(saturationFactor: input.saturationFactor)
-              let inputBuffer = device.makeBuffer(bytes: &metalInput, length: MemoryLayout<SaturationInput>.stride, options: [])
-              commandEncoder.setBuffer(inputBuffer, offset: 0, index: 0)
-          }
+            var metalInput = SaturationInput(saturationFactor: input.saturationFactor)
+            let inputBuffer = device.makeBuffer(bytes: &metalInput, length: MemoryLayout<SaturationInput>.stride, options: [])
+            commandEncoder.setBuffer(inputBuffer, offset: 0, index: 0)
+        }
         
         commandEncoder.setComputePipelineState(pipelineState)
         commandEncoder.setTexture(inputTexture, index: 0)
@@ -127,7 +127,7 @@ extension MetalImageProcessing {
         commandEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-
+        
         guard let outputImage = convertToImage(texture: outputTexture) else {
             throw NSError(domain: "MetalError", code: 7, userInfo: [NSLocalizedDescriptionKey: "Failed to convert MTLTexture to UIImage"])
         }
@@ -140,7 +140,7 @@ extension MetalImageProcessing {
         
         return finalImage
     }
-
+    
 }
 
 
@@ -157,32 +157,32 @@ extension MetalImageProcessing {
         guard let cgImage = image.cgImage else {
             return nil
         }
-
+        
         let width = cgImage.width
         let height = cgImage.height
-
+        
         let bytesPerPixel = 4
         let bytesPerRow = bytesPerPixel * width
-
+        
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
         let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: bitmapInfo)
-
+        
         context?.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
+        
         guard let data = context?.data else {
             return nil
         }
-
+        
         let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: false)
         let texture = device.makeTexture(descriptor: textureDescriptor)
-
+        
         let region = MTLRegionMake2D(0, 0, width, height)
         texture?.replace(region: region, mipmapLevel: 0, withBytes: data, bytesPerRow: bytesPerRow)
-
+        
         return texture
     }
-
+    
     /// Converts a Metal texture to a UIImage.
     ///
     /// - Parameter texture: The Metal texture to be converted.
@@ -190,28 +190,33 @@ extension MetalImageProcessing {
     private func convertToImage(texture: MTLTexture) -> UIImage? {
         let width = texture.width
         let height = texture.height
-
+        
         let bytesPerPixel = 4
         let bytesPerRow = bytesPerPixel * width
-
+        
         let totalBytes = bytesPerRow * height
-
+        
         var pixelData = [UInt8](repeating: 0, count: totalBytes)
-
+        
         let region = MTLRegionMake2D(0, 0, width, height)
         texture.getBytes(&pixelData, bytesPerRow: bytesPerRow, from: region, mipmapLevel: 0)
-
+        
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
         let context = CGContext(data: &pixelData, width: width, height: height, bitsPerComponent: 8, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: bitmapInfo)
-
+        
         guard let cgImage = context?.makeImage() else {
             return nil
         }
-
+        
         let image = UIImage(cgImage: cgImage)
         return image
     }
-
+    
 }
+
+
+
+
+
 
